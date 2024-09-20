@@ -32,8 +32,8 @@ class Post:
 
         try:
             # Wait for the content to be available
-            wait = WebDriverWait(driver, 10)
-            print("waiting for content element...")
+            wait = WebDriverWait(driver, 4)
+            #print("waiting for content element...")
             # Find the element containing the post content by class name
             content_element = wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'div.text-neutral-content'))
@@ -43,40 +43,43 @@ class Post:
             paragraphs = content_element.find_elements(By.TAG_NAME, 'p')
             self.content = "\n".join([p.text for p in paragraphs])  # Join paragraphs with line breaks
         except Exception as e:
-            print(f"Failed to load post content: {e}")
+            #print(f"Failed to load post content: {e}")
             self.content = None
         finally:
             driver.quit()
         return self.content
 
     
-
-    def get_comments(self, base_url, full_url=None):
+    
+    def get_comments(self, base_url, full_url=None): 
         # Fetch comments for the post
         if (full_url == None):
             full_url = f"{base_url}{self.permalink}"
         else:
-            #override URL, gather comments from a provided link
-            None
+            None #override URL, gather comments from a provided link
         driver = setup_driver()
         driver.get(full_url)
 
         try:
             # Wait for the comments to load
-            wait = WebDriverWait(driver, 10)
+            wait = WebDriverWait(driver, 4)
 
             # Locate the comment elements by tag name 'shreddit-comment'
             comment_elements = wait.until(
                 EC.presence_of_all_elements_located((By.TAG_NAME, 'shreddit-comment'))
             )
+            #TODO: Scroll and expand replies to get full tree.
+            
+            
             # Keep track of the most recent comment at each depth level
             parent_map = {0: None}  # Maps depth to the parent comment
             for comment_element in comment_elements:
+                #print("current commentElement: " + str(comment_element))
                 try:
                     # Extract comment attributes
                     comment_id = comment_element.get_attribute('thingid')
                     author = comment_element.get_attribute('author')
-
+                    #print("author attributes found: " + author)
                     #text_element = comment_element.find_element(By.CSS_SELECTOR, f"div#t1_{comment_id}-comment-rtjson-content p")
                     #text = text_element.text
 
@@ -117,3 +120,5 @@ class Post:
 
         return self.comment_tree.get_root_comments()
 
+    def get_related_posts(self):
+        return None
