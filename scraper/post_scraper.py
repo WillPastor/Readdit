@@ -1,9 +1,11 @@
 from models.post import Post
-from utils import setup_driver
+from utils import setup_driver, scroll_to_bottom
+from config.page_identifiers import IDENTIFIERS
+from config.scraper_settings import CONFIG
 from selenium.webdriver.common.by import By
 import time
 
-def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'):
+def fetch_posts(subreddit, base_url=CONFIG['base_url'], limit=CONFIG['default_limit'], max_scroll_attempts=CONFIG['max_scroll_attempts'], sort='hot'):
     """
     Fetches posts from a subreddit using Selenium with simulated scrolling.
     Args:
@@ -19,10 +21,9 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
     full_url = f"{base_url}/r/{subreddit}/?sort={sort}"
     driver = setup_driver()
     driver.get(full_url)
-    time.sleep(3)  # Wait for the page to load
+    time.sleep(CONFIG['scroll_wait_time'])  # Wait for the page to load
     posts_collected = []
     
-    last_height = driver.execute_script("return document.body.scrollHeight")  # Get initial scroll height
     previous_post_count = 0
     scroll_attempts = 0
 
@@ -31,7 +32,7 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
         print(f"Current page URL: {driver.current_url}")
         
         # Find articles that represent each post
-        articles = driver.find_elements(By.CSS_SELECTOR, 'article')  # Updated selector for articles
+        articles = driver.find_elements(By.CSS_SELECTOR, IDENTIFIERS['post_article'])
         
         print(f"Found {len(articles)} articles on this scroll.")
 
@@ -39,14 +40,14 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
             if len(posts_collected) >= limit:
                 break
             try:
-                shreddit_post = article.find_element(By.CSS_SELECTOR, 'shreddit-post')
+                shreddit_post = article.find_element(By.CSS_SELECTOR, IDENTIFIERS['shreddit_post'])
                 # Extract post attributes
-                title = shreddit_post.get_attribute('post-title')
-                permalink = shreddit_post.get_attribute('permalink')
-                votes = shreddit_post.get_attribute('score')
-                subreddit_name = article.get_attribute('subreddit-prefixed-name')
-                author = shreddit_post.get_attribute('author')
-                time_posted = shreddit_post.get_attribute('created-timestamp')
+                title = shreddit_post.get_attribute(IDENTIFIERS['post_title'])
+                permalink = shreddit_post.get_attribute(IDENTIFIERS['post_permalink'])
+                votes = shreddit_post.get_attribute(IDENTIFIERS['post_votes'])
+                subreddit_name = article.get_attribute(IDENTIFIERS['post_subreddit_name'])
+                author = shreddit_post.get_attribute(IDENTIFIERS['post_author'])
+                time_posted = shreddit_post.get_attribute(IDENTIFIERS['post_timestamp'])
 
                 # Create a Post object and append it to the list
                 post = Post(
@@ -65,8 +66,8 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
                 print(f"Error extracting post: {e}")
         
         # Simulate scrolling down
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)  # Wait for new posts to load
+        scroll_to_bottom(driver)
+        time.sleep(CONFIG['scroll_wait_time'])  # Wait for new posts to load
         
         # Check if the number of posts increased
         new_post_count = len(posts_collected)
@@ -75,13 +76,6 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
             break  # Stop if no new posts are found after scrolling
         
         previous_post_count = new_post_count  # Update the previous post count
-        
-        # Calculate new scroll height and compare it with the last scroll height
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            print("No more content to load.")
-            break  # Break the loop if the page height hasn't changed, meaning no new content
-        last_height = new_height
         
         scroll_attempts += 1
         print(f"Scroll attempt {scroll_attempts}: Collected {len(posts_collected)} posts.")
@@ -98,8 +92,8 @@ def fetch_post_content(post):
     driver.get(full_url)
 
     try:
-        content_element = driver.find_element(By.CSS_SELECTOR, 'div.text-neutral-content')
-        paragraphs = content_element.find_elements(By.TAG_NAME, 'p')
+        content_element = driver.find_element(By.CSS_SELECTOR, IDENTIFIERS['post_content'])
+        paragraphs = content_element.find_elements(By.TAG_NAME, IDENTIFIERS['post_paragraph'])
         post.content = "\n".join([p.text for p in paragraphs])
     except Exception as e:
         print(f"Failed to load post content: {e}")

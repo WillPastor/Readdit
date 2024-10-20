@@ -1,8 +1,10 @@
+# Updated main.py
 from scraper.post_scraper import fetch_posts, fetch_post_content
 from scraper.comment_scraper import fetch_comments
+from config.scraper_settings import CONFIG
 
 def main():
-    base_url = "https://reddit.com"
+    base_url = CONFIG['base_url']
     subreddit = 'AmIOverreacting'
 
     # Fetch posts from a subreddit
