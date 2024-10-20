@@ -8,7 +8,7 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
     Fetches posts from a subreddit using Selenium with simulated scrolling.
     Args:
     - subreddit: the name of the subreddit to fetch posts from.
-    - base_url: the base URL of the site (e.g., https://reddit-like-site.com).
+    - base_url: the base URL of the site (e.g., https://reddit.com).
     - limit: the maximum number of posts to collect.
     - max_scroll_attempts: the number of times to scroll down to fetch more posts.
     - sort: sorting option for the posts (hot, new, top).
@@ -40,31 +40,21 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
                 break
             try:
                 shreddit_post = article.find_element(By.CSS_SELECTOR, 'shreddit-post')
-                # Find the title of the post
-                #title = article.get_attribute('aria-label')  # Extract the aria-label attribute which holds the title
-                title= shreddit_post.get_attribute('post-title')
-                print(f"Post Title: {title}")
-                
-                # Get the permalink for the post
-                #permalink = article.find_element(By.CSS_SELECTOR, 'a').get_attribute('href')
+                # Extract post attributes
+                title = shreddit_post.get_attribute('post-title')
                 permalink = shreddit_post.get_attribute('permalink')
-                print(f"Post Permalink: {permalink}")
-
-                # Extract the votes if available
                 votes = shreddit_post.get_attribute('score')
-                
-                # Extract subreddit, author, and post time (adjust based on actual structure)
                 subreddit_name = article.get_attribute('subreddit-prefixed-name')
                 author = shreddit_post.get_attribute('author')
-                time_posted = shreddit_post.get_attribute('created-timestame') #article.find_element(By.CSS_SELECTOR, 'time').get_attribute('datetime')
+                time_posted = shreddit_post.get_attribute('created-timestamp')
 
                 # Create a Post object and append it to the list
                 post = Post(
-                    baseurl=base_url,
+                    base_url=base_url,
                     title=title,
                     permalink=permalink,
-                    upvotes=votes,  # Assuming no separate downvotes available
-                    downvotes=None,  # Optional: handle if available
+                    upvotes=votes,
+                    downvotes=None,
                     subreddit=subreddit_name,
                     user=author,
                     time_posted=time_posted,
@@ -99,3 +89,22 @@ def fetch_posts(subreddit, base_url, limit=10, max_scroll_attempts=2, sort='hot'
     print(f"Total posts collected: {len(posts_collected)}")
     driver.quit()
     return posts_collected
+
+
+def fetch_post_content(post):
+    """Fetches the full content of a post."""
+    full_url = f"{post.base_url}{post.permalink}"
+    driver = setup_driver()
+    driver.get(full_url)
+
+    try:
+        content_element = driver.find_element(By.CSS_SELECTOR, 'div.text-neutral-content')
+        paragraphs = content_element.find_elements(By.TAG_NAME, 'p')
+        post.content = "\n".join([p.text for p in paragraphs])
+    except Exception as e:
+        print(f"Failed to load post content: {e}")
+        post.content = None
+    finally:
+        driver.quit()
+
+    return post.content
