@@ -1,11 +1,15 @@
-# Updated main.py
 from scraper.post_scraper import fetch_posts, fetch_post_content
 from scraper.comment_scraper import fetch_comments
 from config.scraper_settings import CONFIG
+import argparse
 
 def main():
+    parser = argparse.ArgumentParser(description="Readdit Reddit Scraper")
+    parser.add_argument("--subreddit", type=str, help="Subreddit to scrape", default=CONFIG['default_subreddit'])
+    args = parser.parse_args()
+
     base_url = CONFIG['base_url']
-    subreddit = 'AmIOverreacting'
+    subreddit = args.subreddit
 
     # Fetch posts from a subreddit
     posts = fetch_posts(subreddit=subreddit, base_url=base_url, limit=3, sort='hot')
